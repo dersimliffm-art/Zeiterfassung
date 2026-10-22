@@ -103,6 +103,9 @@
   .summen b { display: block; font-size: 20px; } .summen span { font-size: 12px; color: var(--muted); }
   .summen .gross { grid-column: 1 / 3; background: #E2EFDA; } .summen .gross b { font-size: 26px; color: #1E5631; }
   @media (prefers-color-scheme: dark) { .summen .gross { background: #1E3A28; } .summen .gross b { color: #8FE0A8; } }
+  .posten { display: grid; grid-template-columns: 1fr auto; margin: 12px 0 0; }
+  .posten dt, .posten dd { margin: 0; padding: 8px 2px; border-top: 1px solid var(--line); }
+  .posten dt { color: var(--muted); } .posten dd { font-weight: 700; text-align: right; }
   .zusatz { margin: 10px 0 0; font-size: 14px; color: var(--muted); text-align: center; }
   .liste { margin: 0; padding: 0; list-style: none; }
   .liste li { display: grid; grid-template-columns: 74px 44px 1fr auto; align-items: center; gap: 8px; padding: 9px 4px;
@@ -135,7 +138,7 @@
 
 <script>
 // ---- TEXTE (Sprache) ----
-var L = {"locale":"de-DE","heute":"Heute","gestern":"Gestern","morgen":"Morgen","zurueckHeute":"↺ Zurück zu heute","schicht":"Schicht","U":"Urlaub","K":"Krank","leeren":"Frei","zeiten":"Zeiten","ann":"Früher kommen","annU":"Übergabe-Annahme","abg":"Länger bleiben","abgU":"Übergabe-Abgabe","versp":"Verspätung","verspU":"kam später","ueber":"Überstunden","ueberU":"zusätzlich gearbeitet","auto":"Mit „Speichern“ übernehmen.","mitSchicht":"Mit „Speichern“ übernehmen.","min":"min","std":"bezahlte Std.","brutto":"brutto","bruttoHeute":"brutto heute","leer":"Frei – kein Dienst eingetragen.","gespeichert":"✓ gespeichert","schichtGesp":"✓ {x} gespeichert","schichtName":"{k}-Schicht","geloescht":"✓ Frei eingetragen","vortag":"Vortag","folgetag":"Folgetag","weniger":"weniger","mehr":"mehr","speichern":"Speichern","gespeichertKnopf":"✓ Gespeichert","speichertKnopf":"Speichert …","verwerfen":"Änderungen verwerfen","ungespeichert":"Erst speichern oder verwerfen.","berechnet":"Wird berechnet …","laden":"Lädt …","monat":"📅 Monatsübersicht","zurTag":"‹ Zurück zum Tag","stunden":"bezahlte Std.","bruttoM":"brutto","netto":"Netto (Schätzung)","arbeitstage":"Arbeitstage","urlaubT":"Urlaub","krankT":"Krank","azkM":"aufs AZK","saldo":"AZK-Saldo"};
+var L = {"locale":"de-DE","heute":"Heute","gestern":"Gestern","morgen":"Morgen","zurueckHeute":"↺ Zurück zu heute","schicht":"Schicht","U":"Urlaub","K":"Krank","leeren":"Frei","zeiten":"Zeiten","ann":"Früher kommen","annU":"Übergabe-Annahme","abg":"Länger bleiben","abgU":"Übergabe-Abgabe","versp":"Verspätung","verspU":"kam später","ueber":"Überstunden","ueberU":"zusätzlich gearbeitet","auto":"Mit „Speichern“ übernehmen.","mitSchicht":"Mit „Speichern“ übernehmen.","min":"min","std":"bezahlte Std.","brutto":"brutto","bruttoHeute":"brutto heute","leer":"Frei – kein Dienst eingetragen.","gespeichert":"✓ gespeichert","schichtGesp":"✓ {x} gespeichert","schichtName":"{k}-Schicht","geloescht":"✓ Frei eingetragen","vortag":"Vortag","folgetag":"Folgetag","weniger":"weniger","mehr":"mehr","speichern":"Speichern","gespeichertKnopf":"✓ Gespeichert","speichertKnopf":"Speichert …","verwerfen":"Änderungen verwerfen","ungespeichert":"Erst speichern oder verwerfen.","berechnet":"Wird berechnet …","laden":"Lädt …","monat":"📅 Monatsübersicht","zurTag":"‹ Zurück zum Tag","stunden":"bezahlte Std.","bruttoM":"brutto","netto":"Netto (Schätzung)","arbeitstage":"Arbeitstage","urlaubT":"Urlaub","krankT":"Krank","azkM":"aufs AZK","saldo":"AZK-Saldo","stdGesamt":"Stunden insgesamt","stdAus":"davon ausbezahlt","zNacht":"Nachtzuschlag","zSonntag":"Sonntagszuschlag","zFeiertag":"Feiertagszuschlag","zUK":"Zuschlag Urlaub/Krank","azkMonat":"AZK diesen Monat","azkGesamt":"AZK gesamt","std_":"Std."};
 // ---- /TEXTE ----
 var NAMEN = { U: L.U, K: L.K };
 var RTL = document.documentElement.dir === 'rtl';
@@ -304,14 +307,18 @@ function zeigeMonat() {
   var su = monate[ym];
   h += '<section class="karte">';
   if (su && su.std !== undefined) {
+    var eur = function (x) { return zahl(x || 0, 2) + ' €'; }, std = function (x) { return zahl(x || 0, 2) + ' ' + L.std_; };
     h += '<div class="summen">';
-    if (su.netto !== null && su.netto !== undefined) h += '<div class="gross"><b>' + zahl(su.netto, 2) + ' €</b><span>' + L.netto + '</span></div>';
-    h += '<div><b>' + zahl(su.std, 2) + '</b><span>' + L.stunden + '</span></div>';
-    h += '<div><b>' + zahl(su.brutto, 2) + ' €</b><span>' + L.bruttoM + '</span></div></div>';
+    if (su.netto !== null && su.netto !== undefined) h += '<div class="gross"><b>' + eur(su.netto) + '</b><span>' + L.netto + '</span></div>';
+    h += '<div><b>' + eur(su.brutto) + '</b><span>' + L.bruttoM + '</span></div>';
+    h += '<div><b>' + zahl(su.std, 2) + '</b><span>' + L.stdGesamt + '</span></div></div>';
+    var zeilen = [[L.stdAus, std(su.std - (su.azk || 0))], [L.zNacht, eur(su.nacht)], [L.zSonntag, eur(su.sonntag)]];
+    if (su.feiertag) zeilen.push([L.zFeiertag, eur(su.feiertag)]);
+    zeilen.push([L.zUK, eur(su.uk)], [L.azkMonat, std(su.azk)], [L.azkGesamt, std(su.saldo)]);
+    h += '<dl class="posten">' + zeilen.map(function (z) { return '<dt>' + z[0] + '</dt><dd>' + z[1] + '</dd>'; }).join('') + '</dl>';
     var z = [L.arbeitstage + ': ' + su.tage];
     if (su.urlaub) z.push(L.urlaubT + ': ' + su.urlaub);
     if (su.krank) z.push(L.krankT + ': ' + su.krank);
-    if (su.azk) z.push(L.azkM + ': ' + zahl(su.azk, 2) + ' Std.');
     h += '<p class="zusatz">' + z.join(' · ') + '</p>';
   } else {
     h += '<p class="warte">' + L.laden + '</p>';
