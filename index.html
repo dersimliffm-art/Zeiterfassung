@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<title>Zeiterfassung</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1F4E78">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Zeiterfassung">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<style>
+  :root {
+    --bg: #F3F5F8; --card: #FFFFFF; --text: #1B2430; --muted: #6B7685; --line: #E2E6EC; --feld: #F3F5F8;
+    --accent: #1F4E78; --red: #C00000; --ok: #1E7B3A;
+    --F: #2E75B6; --S: #D9822B; --N: #5B4BB7; --U: #2E9E5B; --K: #D64545;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0F141A; --card: #19212B; --text: #E8EDF3; --muted: #93A0B0; --line: #2A3542; --feld: #0F141A;
+            --accent: #7FB2E5; --red: #FF7A7A; --ok: #5FD38A; }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+  main { max-width: 480px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 16px 40px; }
+
+  .nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .pfeil { width: 44px; height: 44px; border-radius: 22px; border: 1px solid var(--line); background: var(--card);
+    color: var(--text); font-size: 22px; cursor: pointer; }
+  .pfeil:disabled { opacity: .3; }
+  .kopf { text-align: center; flex: 1; }
+  .kopf .wtag { font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .kopf .datum { font-size: 26px; font-weight: 700; }
+  .rot { color: var(--red) !important; }
+  .zuheute { display: block; margin: 6px auto 0; background: none; border: 0; color: var(--accent);
+    font-size: 15px; font-weight: 600; cursor: pointer; padding: 6px 10px; }
+  .feiertag { margin: 10px auto 0; width: fit-content; padding: 4px 12px; border-radius: 999px;
+    background: #F4B183; color: #5A2600; font-size: 14px; font-weight: 600; }
+
+  .karte { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px; margin-top: 16px; }
+  .titel { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin: 0 0 10px; }
+
+  .schichten { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .sk { border: 2px solid transparent; border-radius: 16px; padding: 14px 6px; min-height: 84px; cursor: pointer;
+    color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    transition: transform .08s; }
+  .sk:active { transform: scale(.96); }
+  .sk b { font-size: 30px; line-height: 1; }
+  .sk span { font-size: 12px; opacity: .92; }
+  .sk.F { background: var(--F); } .sk.S { background: var(--S); } .sk.N { background: var(--N); }
+  .sk.U { background: var(--U); } .sk.K { background: var(--K); }
+  .sk.leer { background: transparent; color: var(--muted); border: 2px dashed var(--line); }
+  .sk.leer.aktiv { color: var(--text); border: 2px solid var(--text); box-shadow: none; }
+  .sk.aktiv { border-color: var(--text); box-shadow: 0 0 0 3px var(--card) inset; }
+  .sk.aus { opacity: .45; }
+
+  .zeile { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; }
+  .zeile + .zeile { border-top: 1px solid var(--line); }
+  .zeile .name { font-weight: 600; }
+  .zeile .name small { display: block; font-weight: 400; font-size: 12px; color: var(--muted); }
+  .stepper { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .stepper button { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--feld);
+    color: var(--text); font-size: 22px; cursor: pointer; }
+  .stepper input { width: 64px; height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--feld);
+    color: var(--text); font-size: 18px; font-weight: 700; text-align: center; }
+  .stepper .einh { font-size: 13px; color: var(--muted); width: 26px; }
+  .zeile.an input { border-color: var(--ok); color: var(--ok); }
+
+  .ergebnis { display: flex; justify-content: space-around; text-align: center; }
+  .ergebnis .wert { font-size: 24px; font-weight: 700; }
+  .ergebnis .lbl { font-size: 13px; color: var(--muted); }
+  .hinweis { text-align: center; color: var(--muted); font-size: 14px; margin: 8px 0 0; }
+
+  .meldung { position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(20px);
+    background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-size: 15px;
+    opacity: 0; transition: .25s; pointer-events: none; white-space: nowrap; }
+  .meldung.zeigen { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .meldung.fehler { background: var(--red); color: #fff; white-space: normal; text-align: center; width: max-content; max-width: 90vw; }
+  .laedt { opacity: .5; pointer-events: none; }
+  .zahnrad { display: block; margin: 22px auto 0; background: none; border: 0; color: var(--muted); font-size: 14px; cursor: pointer; padding: 8px; }
+  .setup h1 { font-size: 24px; margin: 8px 0 6px; } .setup p { color: var(--muted); margin: 0 0 14px; }
+  .setup label { display: block; font-weight: 600; margin: 14px 0 6px; }
+  .setup textarea { width: 100%; min-height: 76px; border-radius: 12px; border: 1px solid var(--line); background: var(--feld);
+    color: var(--text); font: 14px/1.35 ui-monospace, Menlo, Consolas, monospace; padding: 10px; word-break: break-all; }
+  .knopf { width: 100%; margin-top: 18px; padding: 15px; border-radius: 14px; border: 0; font-size: 17px; font-weight: 700;
+    background: var(--accent); color: #fff; cursor: pointer; }
+  @media (prefers-color-scheme: dark) { .knopf { color: #0F141A; } }
+  .klein { font-size: 13px; color: var(--muted); margin-top: 14px; }
+</style>
+</head>
+<body>
+<main id="app"><p class="hinweis" style="margin-top:40vh">…</p></main>
+<div class="meldung" id="meldung"></div>
+
+<script>
+// ---- TEXTE (Sprache) ----
+var L = {"locale":"de-DE","heute":"Heute","gestern":"Gestern","morgen":"Morgen","zurueckHeute":"↺ Zurück zu heute","schicht":"Schicht","U":"Urlaub","K":"Krank","leeren":"Frei","zeiten":"Zeiten","ann":"Früher kommen","annU":"Übergabe-Annahme","abg":"Länger bleiben","abgU":"Übergabe-Abgabe","versp":"Verspätung","verspU":"kam später","ueber":"Überstunden","ueberU":"zusätzlich gearbeitet","auto":"Änderungen werden automatisch gespeichert.","mitSchicht":"Wird mit der Schicht gespeichert.","min":"min","std":"bezahlte Std.","brutto":"brutto","bruttoHeute":"brutto heute","leer":"Frei – kein Dienst eingetragen.","gespeichert":"✓ gespeichert","schichtGesp":"✓ {x} gespeichert","schichtName":"{k}-Schicht","geloescht":"✓ Frei eingetragen","vortag":"Vortag","folgetag":"Folgetag","weniger":"weniger","mehr":"mehr"};
+// ---- /TEXTE ----
+var NAMEN = { U: L.U, K: L.K };
+var RTL = document.documentElement.dir === 'rtl';
+function wtag(d) { return d.toLocaleDateString(L.locale, { weekday: 'long' }); }
+function datumText(d) { return d.toLocaleDateString(L.locale, { day: 'numeric', month: 'long', year: 'numeric' }); }
+var ARBEIT = ['F', 'S', 'N'];
+var SCHRITT = 5;                          // Minuten pro Tipp auf − / +
+var STANDARD = { ann: 15, abg: 15 };      // Teamleiter: Vorschlag für neue Tage
+
+var tag = null, belegt = false, wartet = false, timer = null;
+var min = { ann: 0, abg: 0, versp: 0, ueber: 0 };   // alles in Minuten
+
+// ---------- Hilfen ----------
+function datumObj(iso) { var p = iso.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+function isoVon(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+function plusTage(iso, n) { var d = datumObj(iso); d.setDate(d.getDate() + n); return isoVon(d); }
+function zahl(n, st) { return n.toLocaleString(L.locale, { minimumFractionDigits: st, maximumFractionDigits: st }); }
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+function n0(v) { var n = Number(v); return isNaN(n) ? 0 : n; }
+function melde(text, fehler) {
+  var m = document.getElementById('meldung');
+  m.textContent = text; m.className = 'meldung zeigen' + (fehler ? ' fehler' : '');
+  clearTimeout(melde.t); melde.t = setTimeout(function () { m.className = 'meldung' + (fehler ? ' fehler' : ''); }, fehler ? 5000 : 1600);
+}
+// ---------- Verbindung zur Tabelle (Apps-Script-Schnittstelle) ----------
+var KONF_KEY = 'zeiterfassung_konfig';
+function konfig() { try { return JSON.parse(localStorage.getItem(KONF_KEY) || 'null'); } catch (e) { return null; } }
+function konfigSpeichern(k) { try { localStorage.setItem(KONF_KEY, JSON.stringify(k)); } catch (e) {} }
+function server(fn, args, ok, still) {
+  var k = konfig(); if (!k) { einrichtung(); return; }
+  belegt = true; if (!still) document.getElementById('app').classList.add('laedt');
+  var fertig = function () { belegt = false; document.getElementById('app').classList.remove('laedt'); };
+  var q = fn === 'appTag' ? { api: 'tag', iso: args[0] || '' }
+        : { api: 'speichern', iso: args[0], s: args[1], v: args[2], u: args[3], a: args[4], b: args[5] };
+  q.k = k.k; q.t = Date.now();
+  fetch(k.url + '?' + new URLSearchParams(q).toString(), { redirect: 'follow', cache: 'no-store' })
+    .then(function (r) { if (!r.ok) throw new Error('Server antwortet nicht (' + r.status + ')'); return r.json(); })
+    .then(function (r) {
+      fertig();
+      if (r && r.zugriff === false) { melde(r.fehler, true); einrichtung(k); return; }
+      if (r && r.fehler && fn === 'appSpeichern') { melde(r.fehler, true); return; }
+      ok(r);
+    })
+    .catch(function (e) { fertig(); melde('Keine Verbindung zur Tabelle. ' + (e.message || ''), true); });
+}
+
+// ---------- Einrichtung (einmal: Link + Schlüssel) ----------
+function einrichtung(alt) {
+  alt = alt || konfig() || {};
+  var h = '<div class="setup"><h1>Einrichtung</h1><p>Einmalig: den Link deiner Tabelle und deinen Schlüssel einfügen. Beides steht in Apps Script.</p>';
+  h += '<label for="e_url">App-Link (endet auf /exec)</label><textarea id="e_url" placeholder="https://script.google.com/macros/s/…/exec">' + esc(alt.url || '') + '</textarea>';
+  h += '<label for="e_k">Schlüssel</label><textarea id="e_k" placeholder="langer Code aus dem Protokoll">' + esc(alt.k || '') + '</textarea>';
+  h += '<button class="knopf" id="e_ok">Speichern und verbinden</button>';
+  h += '<p class="klein">Den Schlüssel nicht weitergeben – wer ihn hat, kann in deine Tabelle eintragen.</p></div>';
+  document.getElementById('app').innerHTML = h;
+  document.getElementById('e_ok').onclick = function () {
+    var url = document.getElementById('e_url').value.trim().split(/\s+/)[0].replace(/\?.*$/, '');
+    var k = document.getElementById('e_k').value.replace(/\s+/g, '');
+    if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(url)) { melde('Der Link muss mit https://script.google.com beginnen und auf /exec enden.', true); return; }
+    if (k.length < 20) { melde('Der Schlüssel ist zu kurz.', true); return; }
+    konfigSpeichern({ url: url, k: k }); tag = null; lade(null);
+  };
+}
+
+// ---------- Anzeige ----------
+function zeige(t) {
+  if (t.fehler) { melde(t.fehler, true); if (!tag) tag = { iso: t.heute, heute: t.heute }; return; }
+  var neuerTag = !tag || tag.iso !== t.iso;
+  tag = t;
+  if (neuerTag || !wartet) {
+    var arbeit = ARBEIT.indexOf(t.schicht) >= 0;
+    min.versp = Math.round(n0(t.versp));
+    min.ueber = Math.round(n0(t.ueber) * 60);
+    min.ann = t.tl ? (arbeit ? Math.round(n0(t.ann)) : STANDARD.ann) : 0;
+    min.abg = t.tl ? (arbeit ? Math.round(n0(t.abg)) : STANDARD.abg) : 0;
+  }
+  var d = datumObj(t.iso), rot = d.getDay() === 0 || !!t.feiertag, istHeute = t.iso === t.heute;
+  var rel = istHeute ? L.heute + ' · ' + wtag(d) : (t.iso === plusTage(t.heute, -1) ? L.gestern + ' · ' + wtag(d)
+          : (t.iso === plusTage(t.heute, 1) ? L.morgen + ' · ' + wtag(d) : wtag(d)));
+  var h = '<div class="nav">';
+  h += '<button class="pfeil" id="zurueck" aria-label="' + L.vortag + '"' + (t.iso <= t.erster ? ' disabled' : '') + '>' + (RTL ? '›' : '‹') + '</button>';
+  h += '<div class="kopf"><div class="wtag' + (rot ? ' rot' : '') + '">' + rel + '</div>';
+  h += '<div class="datum' + (rot ? ' rot' : '') + '">' + datumText(d) + '</div></div>';
+  h += '<button class="pfeil" id="vor" aria-label="' + L.folgetag + '"' + (t.iso >= t.letzter ? ' disabled' : '') + '>' + (RTL ? '‹' : '›') + '</button></div>';
+  if (!istHeute) h += '<button class="zuheute" id="zuheute">' + L.zurueckHeute + '</button>';
+  if (t.feiertag) h += '<div class="feiertag">🎉 ' + esc(t.feiertag) + '</div>';
+
+  // Schicht
+  h += '<section class="karte"><p class="titel">' + L.schicht + '</p><div class="schichten">';
+  t.schichten.forEach(function (s) {
+    h += '<button class="sk ' + s.k + (t.schicht === s.k ? ' aktiv' : (t.schicht ? ' aus' : '')) + '" data-k="' + s.k + '"><b>' + s.k + '</b><span dir="ltr">' + esc(s.von) + '–' + esc(s.bis) + '</span></button>';
+  });
+  ['U', 'K'].forEach(function (k) {
+    h += '<button class="sk ' + k + (t.schicht === k ? ' aktiv' : (t.schicht ? ' aus' : '')) + '" data-k="' + k + '"><b>' + k + '</b><span>' + NAMEN[k] + '</span></button>';
+  });
+  h += '<button class="sk leer' + (t.schicht ? ' aus' : ' aktiv') + '" data-k=""><b>–</b><span>' + L.leeren + '</span></button>';
+  h += '</div></section>';
+
+  // Zeiten (Minuten, flexibel)
+  if (ARBEIT.indexOf(t.schicht) >= 0 || !t.schicht) {
+    h += '<section class="karte"><p class="titel">' + L.zeiten + '</p>';
+    if (t.tl) {
+      h += zeile('ann', L.ann, L.annU);
+      h += zeile('abg', L.abg, L.abgU);
+    }
+    h += zeile('versp', L.versp, L.verspU);
+    h += zeile('ueber', L.ueber, L.ueberU);
+    h += '<p class="hinweis">' + (t.schicht ? L.auto : L.mitSchicht) + '</p>';
+    h += '</section>';
+  }
+
+  // Ergebnis
+  h += '<section class="karte" id="ergebnis">' + ergebnisHtml(t, istHeute) + '</section>';
+  h += '<button class="zahnrad" id="einst">⚙ Verbindung ändern</button>';
+
+  document.getElementById('app').innerHTML = h;
+  document.querySelectorAll('.sk').forEach(function (b) { b.onclick = function () { schichtTipp(b.getAttribute('data-k')); }; });
+  var z = document.getElementById('zurueck'), v = document.getElementById('vor'), hh = document.getElementById('zuheute');
+  if (z) z.onclick = function () { lade(plusTage(tag.iso, -1)); };
+  if (v) v.onclick = function () { lade(plusTage(tag.iso, 1)); };
+  if (hh) hh.onclick = function () { lade(null); };
+  document.getElementById('einst').onclick = function () { einrichtung(); };
+  ['ann', 'abg', 'versp', 'ueber'].forEach(function (id) {
+    var feld = document.getElementById('w_' + id); if (!feld) return;
+    document.getElementById('m_' + id).onclick = function () { aendere(id, min[id] - SCHRITT); };
+    document.getElementById('p_' + id).onclick = function () { aendere(id, min[id] + SCHRITT); };
+    feld.onchange = function () { aendere(id, Math.round(n0(feld.value.replace(',', '.')))); };
+    feld.onfocus = function () { feld.select(); };
+  });
+}
+function zeile(id, name, unter) {
+  return '<div class="zeile' + (min[id] > 0 ? ' an' : '') + '" id="z_' + id + '"><div class="name">' + name + '<small>' + unter + '</small></div>' +
+    '<div class="stepper"><button id="m_' + id + '" aria-label="' + L.weniger + '">−</button>' +
+    '<input id="w_' + id + '" inputmode="numeric" value="' + min[id] + '"><button id="p_' + id + '" aria-label="' + L.mehr + '">+</button>' +
+    '<span class="einh">' + L.min + '</span></div></div>';
+}
+function ergebnisHtml(t, istHeute) {
+  if (t.schicht && t.std !== null) {
+    return '<div class="ergebnis"><div><div class="wert">' + zahl(t.std, 2) + '</div><div class="lbl">' + L.std + '</div></div>' +
+      '<div><div class="wert">' + zahl(t.eur, 2) + ' €</div><div class="lbl">' + (istHeute ? L.bruttoHeute : L.brutto) + '</div></div></div>';
+  }
+  return '<p class="hinweis" style="margin:0">' + L.leer + '</p>';
+}
+
+// ---------- Eingaben ----------
+function aendere(id, wert) {
+  min[id] = Math.max(0, Math.min(id === 'ueber' ? 720 : 240, wert));
+  document.getElementById('w_' + id).value = min[id];
+  document.getElementById('z_' + id).className = 'zeile' + (min[id] > 0 ? ' an' : '');
+  if (ARBEIT.indexOf(tag.schicht) >= 0) {           // Schicht steht schon: kurz warten, dann speichern
+    wartet = true; clearTimeout(timer);
+    timer = setTimeout(function () { speichern(tag.schicht, true); }, 900);
+  }
+}
+function schichtTipp(k) { if (k === '' && !tag.schicht) return; if (!belegt) { clearTimeout(timer); speichern(k, false); } }
+
+function speichern(k, still) {
+  if (belegt) { timer = setTimeout(function () { speichern(k, still); }, 400); return; }
+  wartet = false;
+  var leer = function (v) { return v > 0 ? v : ''; };
+  var args = [tag.iso, k, leer(min.versp), min.ueber > 0 ? Math.round(min.ueber / 60 * 10000) / 10000 : '',
+              tag.tl ? leer(min.ann) : '', tag.tl ? leer(min.abg) : ''];
+  server('appSpeichern', args, function (t) {
+    if (still) { tag = t; if (!wartet) document.getElementById('ergebnis').innerHTML = ergebnisHtml(t, t.iso === t.heute); melde(L.gespeichert); }
+    else { zeige(t); melde(k ? L.schichtGesp.replace('{x}', NAMEN[k] || L.schichtName.replace('{k}', k)) : L.geloescht); }
+  }, still);
+}
+function lade(iso) { if (!belegt) { clearTimeout(timer); wartet = false; server('appTag', [iso], zeige); } }
+
+// beim Zurückkehren in die App: nach Mitternacht automatisch auf den neuen Tag springen
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState === 'visible' && tag && tag.iso === tag.heute && !wartet) lade(null);
+});
+// Einrichtung auch per Link möglich: …/#url=<exec-Link>&k=<Schlüssel>
+function hashEinrichtung() {
+  if (location.hash.length > 1) {
+    var p = new URLSearchParams(location.hash.slice(1));
+    var neu = p.get('url') && p.get('k');
+    if (neu) konfigSpeichern({ url: p.get('url'), k: p.get('k') });
+    history.replaceState(null, '', location.pathname);
+    return neu;
+  }
+}
+hashEinrichtung();
+window.addEventListener('hashchange', function () { if (hashEinrichtung()) { tag = null; lade(null); } });
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
+if (konfig()) lade(null); else einrichtung();
+</script>
+</body>
+</html>
